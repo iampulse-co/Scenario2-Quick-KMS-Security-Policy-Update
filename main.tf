@@ -74,6 +74,26 @@ resource "aws_iam_group_policy" "AdminIamUsers-Policy" {
 
 resource "aws_kms_key" "ecr_cmk" {
   description = "KMS Key for ECR for Scenario 2"
+  policy = jsonencode(
+    {
+      "Version" : "2012-10-17",
+      "Statement" : [
+        {
+          "Sid" : "Deny Support Team",
+          "Effect" : "Deny",
+          "Principal" : {
+            "AWS" : flatten(
+              [
+                for user in aws_iam_user.support_iam_users : user.arn
+              ]
+            )
+          }
+          "Action" : "kms:*",
+          "Resource" : "*"
+        }
+      ]
+    }
+  )
 }
 
 # Create alias for easy KMS key finding
@@ -96,4 +116,27 @@ resource "aws_ecr_repository" "ecr-for-scenario2" {
   image_scanning_configuration {
     scan_on_push = true
   }
+}
+
+resource "aws_ecr_repository_policy" "ecr-for-scenario2-policy" {
+  repository = aws_ecr_repository.ecr-for-scenario2.name
+  policy = jsonencode(
+    {
+      "Version" : "2012-10-17",
+      "Statement" : [
+        {
+          "Sid" : "Deny Support Team",
+          "Effect" : "Deny",
+          "Principal" : {
+            "AWS" : flatten(
+              [
+                for user in aws_iam_user.support_iam_users : user.arn
+              ]
+            )
+          }
+          "Action" : "ecr:*"
+        }
+      ]
+    }
+  )
 }
