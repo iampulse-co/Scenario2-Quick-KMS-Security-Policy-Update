@@ -35,8 +35,40 @@ resource "aws_iam_user" "support_iam_users" {
   name = each.key
 }
 
-resource "aws_iam_group" "SupportStaffIamUsers" {
-  name = "SupportStaffIamUsers"
+resource "aws_iam_group" "SupportStaff" {
+  name = "SupportStaff"
+}
+
+resource "aws_iam_group_membership" "SupportGroupMembership" {
+  name = "Support-Group-Membership"
+  users = [
+    for v in aws_iam_user.support_iam_users : v.name
+  ]
+  group = aws_iam_group.SupportStaff.name
+}
+
+resource "aws_iam_group_policy_attachment" "SupportPermitAll" {
+  group      = aws_iam_group.SupportStaff.name
+  policy_arn = aws_iam_policy.PermitAllPolicy.arn
+}
+
+# Create policy for users to permit all
+resource "aws_iam_policy" "PermitAllPolicy" {
+  name        = "PermitAllPolicy"
+  description = "Permit all actions"
+  policy = jsonencode(
+    {
+      "Version" : "2012-10-17",
+      "Statement" : [
+        {
+          "Sid" : "GlobalAdmins",
+          "Effect" : "Allow",
+          "Action" : "*",
+          "Resource" : "*",
+        }
+      ]
+    }
+  )
 }
 
 # These users are admin team members
@@ -51,25 +83,21 @@ resource "aws_iam_user" "admin_iam_users" {
   name = each.key
 }
 
-resource "aws_iam_group" "AdminStaffIamUsers" {
-  name = "AdminStaffIamUsers"
+resource "aws_iam_group" "AdminStaff" {
+  name = "AdminStaff"
 }
 
-resource "aws_iam_group_policy" "AdminIamUsers-Policy" {
-  name  = "SupportStaffIamUsers-Policy"
-  group = aws_iam_group.AdminStaffIamUsers.name
-  policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Id" : "AdminRole",
-    "Statement" : [
-      {
-        "Sid" : "GlobalAdmins",
-        "Effect" : "Allow",
-        "Action" : "*",
-        "Resource" : "*"
-      }
-    ]
-  })
+resource "aws_iam_group_membership" "AdminGroupMembership" {
+  name = "Admin-Group-Membership"
+  users = [
+    for v in aws_iam_user.admin_iam_users : v.name
+  ]
+  group = aws_iam_group.AdminStaff.name
+}
+
+resource "aws_iam_group_policy_attachment" "AdminPermitAll" {
+  group      = aws_iam_group.AdminStaff.name
+  policy_arn = aws_iam_policy.PermitAllPolicy.arn
 }
 
 resource "aws_kms_key" "ecr_cmk" {
